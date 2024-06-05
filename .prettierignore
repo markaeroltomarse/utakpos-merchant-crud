@@ -1,0 +1,11 @@
+.yarn
+.next
+.cache
+dist
+out
+node_modules
+next-env.d.ts
+next.config.ts
+package-lock.json
+public
+yarn.lock
