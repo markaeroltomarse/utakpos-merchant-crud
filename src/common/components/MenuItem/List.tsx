@@ -3,6 +3,13 @@ import useElementOnScreen from "@/hooks/useElementOnScreen";
 import React, { useEffect, useRef, useState } from 'react';
 import Chip from "../Display/Chip";
 import Input from "../Inputs/Input";
+import SelectDropdown from "../Inputs/Select";
+
+export interface IFilterMenu {
+    filterCategory?: string,
+    filterPriceRange?: { min: number; max: number },
+    filterSearchTerm?: string
+}
 
 export interface MenuItemListProps {
     menuItems: TMenuItem[];
@@ -11,12 +18,18 @@ export interface MenuItemListProps {
     onChangePage?: (pageNumber: number, isGoingToNext?: boolean) => void;
     itemsPerPage?: number;
     onDeleteMultiple?: (itemIds: string[]) => void;
+    onFilterChange?: (filter: IFilterMenu) => void
 }
 
 const MenuItemList: React.FC<MenuItemListProps> = (props) => {
-    const { menuItems, onClickEdit, onClickDelete, onChangePage, onDeleteMultiple, itemsPerPage } = props;
+    const { menuItems, onClickEdit, onClickDelete, onChangePage, onDeleteMultiple, onFilterChange, itemsPerPage } = props;
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+    // Filter state
+    const [filterCategory, setFilterCategory] = useState<string>('');
+    const [filterPriceRange, setFilterPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: Infinity });
+    const [filterSearchTerm, setFilterSearchTerm] = useState<string>('');
 
     const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
@@ -26,6 +39,14 @@ const MenuItemList: React.FC<MenuItemListProps> = (props) => {
     useEffect(() => {
         onChangePage?.(currentPage);
     }, [currentPage]);
+
+    useEffect(() => {
+        onFilterChange?.({
+            filterPriceRange,
+            filterCategory,
+            filterSearchTerm
+        })
+    }, [filterPriceRange, filterCategory, filterSearchTerm])
 
     const handleSelectItem = (id: string) => {
         setSelectedItems((prevSelectedItems) =>
@@ -40,11 +61,64 @@ const MenuItemList: React.FC<MenuItemListProps> = (props) => {
         setSelectedItems([]);
     };
 
+    const options = [
+        { value: '', label: 'All Categories' },
+        { value: 'Beverages', label: 'Beverages' },
+        { value: 'Main Course', label: 'Main Course' },
+        { value: 'Desserts', label: 'Desserts' },
+        { value: 'Salads', label: 'Salads' },
+        { value: 'Appetizers', label: 'Appetizers' },
+    ];
+
+    // Filter logic
+    const filteredMenuItems = menuItems.filter((item) => {
+        const matchesCategory = filterCategory ? item.category === filterCategory : true;
+        const matchesPriceRange = item.price >= filterPriceRange.min && item.price <= filterPriceRange.max;
+        const matchesSearchTerm = filterSearchTerm ? item.name.toLowerCase().includes(filterSearchTerm.toLowerCase()) : true;
+
+        return matchesCategory && matchesPriceRange && matchesSearchTerm;
+    });
+
     return (
         <div>
+            {/* Filter UI */}
+            <div className="flex gap-4 mb-4">
+                <SelectDropdown
+                    value={filterCategory}
+                    onChange={setFilterCategory}
+                    options={options}
+                    className="px-4 py-2 border border-gray-300 rounded-md"
+                />
+
+                {/* <input
+                    type="number"
+                    placeholder="Min Price"
+                    value={filterPriceRange.min === 0 ? '' : filterPriceRange.min}
+                    onChange={(e) => setFilterPriceRange({ ...filterPriceRange, min: Number(e.target.value) || 0 })}
+                    className="px-4 py-2 border border-gray-300 rounded-md"
+                />
+
+                <input
+                    type="number"
+                    placeholder="Max Price"
+                    value={filterPriceRange.max === Infinity ? '' : filterPriceRange.max}
+                    onChange={(e) => setFilterPriceRange({ ...filterPriceRange, max: Number(e.target.value) || Infinity })}
+                    className="px-4 py-2 border border-gray-300 rounded-md"
+                /> */}
+
+                <Input
+                    inputAttribute={{
+                        type: 'text',
+                        placeholder: "Search...",
+                        value: filterSearchTerm,
+                        onChange: (e) => setFilterSearchTerm(e.target.value),
+                    }}
+                />
+            </div>
+
             <ul className="space-y-6">
-                {menuItems.map((item) => (
-                    <li key={item.id} className={`p-6 border border-gray-200 rounded-lg shadow-lg  hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${selectedItems.includes(item?.id!) ? 'bg-[#10ac8591] text-white' : 'bg-white'}`}>
+                {filteredMenuItems.map((item) => (
+                    <li key={item.id} className={`p-6 border border-gray-200 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${selectedItems.includes(item?.id!) ? 'bg-[#10ac8591] text-white' : 'bg-white'}`}>
                         <div className="flex justify-between items-start">
                             <div>
                                 <div className="flex items-center mb-3">
@@ -101,39 +175,40 @@ const MenuItemList: React.FC<MenuItemListProps> = (props) => {
             </ul>
 
             <div ref={notificationRef}></div>
-            <div className={`flex gap-2 justify-center transition-all mt-4  p-5 ${!isNotificationVisible && "rounded-md shadow-lg fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-[#10ac84]"}`} >
+            <div className={`flex gap-2 justify-center transition-all mt-4 p-5 ${!isNotificationVisible && "rounded-md shadow-lg fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-[#10ac84]"}`}>
                 <button
                     onClick={() => paginate(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50`}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
                 >
                     Previous
                 </button>
                 <button
                     onClick={() => paginate(currentPage + 1)}
-                    disabled={itemsPerPage ? menuItems.length < itemsPerPage : false}
+                    disabled={(itemsPerPage && filteredMenuItems.length < itemsPerPage) || false}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
                 >
                     Next
                 </button>
 
-                {selectedItems.length > 0 && <>
-                    <button
-                        onClick={() => setSelectedItems([])}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
-                    >
-                        Unselect All ({selectedItems.length})
-                    </button>
+                {selectedItems.length > 0 && (
+                    <>
+                        <button
+                            onClick={() => setSelectedItems([])}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                        >
+                            Unselect All ({selectedItems.length})
+                        </button>
 
-                    <button
-                        onClick={handleDeleteSelected}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                    >
-                        Delete Selected
-                    </button>
-                </>}
+                        <button
+                            onClick={handleDeleteSelected}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                        >
+                            Delete Selected
+                        </button>
+                    </>
+                )}
             </div>
-
         </div>
     );
 };

@@ -1,4 +1,5 @@
 import useAlert from "@/common/components/Display/Alert";
+import { IFilterMenu } from "@/common/components/MenuItem/List";
 import { database } from "@/config/firebase";
 import { dummyData } from "@/data/constant/dummy";
 import { TMenuItem } from "@/data/types/menu.types";
@@ -19,7 +20,7 @@ const useMenuItems = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const useFormObj = useForm<TMenuItem>();
     const [totalItems, setTotalItems] = useState<number>(0);
-
+    const [lastState, setLastState] = useState(null)
     const ITEMS_PER_PAGE = 10; // Number of items to display per page
 
     const { renderNotification, executeAlert } = useAlert()
@@ -30,37 +31,37 @@ const useMenuItems = () => {
 
     useEffect(() => {
         fetchMenuItems();
+        console.log('currentPage', currentPage)
     }, [currentPage]);
 
-    const fetchMenuItems = () => {
+    const fetchMenuItems = async () => {
         setLoading(true);
         const menuRef = ref(database, "menuItems");
 
-        let menuQuery;
-        if (currentPage === 1) {
-            menuQuery = query(menuRef, orderByKey(), limitToFirst(ITEMS_PER_PAGE + 1));
-        } else if (currentPage > 1 && lastKey) {
+        let menuQuery = query(menuRef, orderByKey(), limitToFirst(ITEMS_PER_PAGE + 1));
+        if (currentPage > 1 && lastKey) {
             menuQuery = query(menuRef, orderByKey(), startAt(lastKey), limitToFirst(ITEMS_PER_PAGE + 1));
         } else if (currentPage < 1 && firstKey) {
             menuQuery = query(menuRef, orderByKey(), endAt(firstKey), limitToLast(ITEMS_PER_PAGE + 1));
-        }
-
-        if (!menuQuery) {
-            return setMenuItems([])
         }
 
         onValue(menuQuery, (snapshot) => {
             const data = snapshot.val();
             const items = data ? Object.keys(data).map((key) => ({ id: key, ...data[key] })) : [];
 
+            console.log('items', items)
+
             if (items.length > ITEMS_PER_PAGE) {
-                if (currentPage > 0) {
-                    setLastKey(items[ITEMS_PER_PAGE - 1].id);
-                    setFirstKey(items[0].id);
-                    items.pop(); // Remove the extra item for next page
-                } else {
+                if (currentPage > 1) {
                     setLastKey(items[ITEMS_PER_PAGE].id);
+                    items.pop(); // Remove the extra item for next page
+                } else if (currentPage < 1) {
+                    setFirstKey(items[0].id);
                     items.shift(); // Remove the extra item for previous page
+                } else {
+                    setFirstKey(items[0].id);
+                    setLastKey(items[ITEMS_PER_PAGE - 1].id);
+                    items.pop(); // Remove the extra item for next page
                 }
             } else {
                 setLastKey(null);
@@ -149,6 +150,9 @@ const useMenuItems = () => {
         console.log('20 dummy records inserted');
     };
 
+    const handleOnChangeFilter = (filter?: IFilterMenu) => {
+
+    }
 
     return {
         handleDelete,
@@ -173,6 +177,7 @@ const useMenuItems = () => {
         executeAlert,
         deleteAllRecords,
         insertDummyRecords,
+        handleOnChangeFilter,
         ...useFormObj
     }
 };

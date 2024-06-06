@@ -36,10 +36,11 @@ const HomePage: NextPageWithLayout<HomePageProps> = () => {
     executeAlert,
     loading,
     insertDummyRecords,
-    deleteAllRecords
+    deleteAllRecords,
+    ITEMS_PER_PAGE,
+    handleOnChangeFilter
   } = useMenuItems()
 
-  const ITEMS_PER_PAGE = 10; // Number of items to display per page
 
   const onSubmit: SubmitHandler<TMenuItem> = (data) => {
     if (!database) return
@@ -87,7 +88,7 @@ const HomePage: NextPageWithLayout<HomePageProps> = () => {
   };
 
   const renderFormItem = useMemo(() => {
-    return <div id="form-item" className={`overflow-hidden transition-all  rounded-md  ${openForm ? 'max-h-[1000px] p-5 bg-gray-300 border-none' : 'max-h-[50px]'}`}>
+    return <div id="form-item" className={`overflow-hidden transition-all  rounded-md  ${openForm ? 'max-h-[1000px] p-7 bg-gray-300 border-none' : 'max-h-[50px]'}`}>
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold mb-4">Menu Management</h1>
         <Button
@@ -135,7 +136,6 @@ const HomePage: NextPageWithLayout<HomePageProps> = () => {
 
   useEffect(() => {
     const generateDummy = async () => {
-      alert("INSERTING DUMMIES")
       await deleteAllRecords()
       await insertDummyRecords()
     }
@@ -151,16 +151,16 @@ const HomePage: NextPageWithLayout<HomePageProps> = () => {
       <hr />
       <div className="mt-8">
         <h2 className="text-2xl font-bold mb-4">Menu Items ({totalItems})</h2>
-        {loading ? <Loading size={100} data-aos="zoom-in" /> : <>
-          <MenuItemList
-            menuItems={menuItems}
-            onClickDelete={handleDelete}
-            onClickEdit={handleEdit}
-            onChangePage={(page) => setCurrentPage(page)}
-            itemsPerPage={ITEMS_PER_PAGE}
-            onDeleteMultiple={handleDeleteMultiple}
-          />
-        </>}
+        {loading && <Loading size={100} data-aos="zoom-in" />}
+        <MenuItemList
+          menuItems={menuItems}
+          onClickDelete={handleDelete}
+          onClickEdit={handleEdit}
+          onChangePage={(page) => setCurrentPage(page)}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onDeleteMultiple={handleDeleteMultiple}
+          onFilterChange={handleOnChangeFilter}
+        />
       </div>
     </div>
   );
